@@ -1,4 +1,4 @@
-# Chess Thinking Review: MVP architecture
+# Boardtalk: MVP architecture
 
 Design only. Diagrams are Mermaid (render natively on GitHub, GitLab, and in the VS Code / JetBrains Markdown previews). The source task is in [`task.txt`](task.txt).
 

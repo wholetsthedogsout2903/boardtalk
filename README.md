@@ -1,4 +1,4 @@
-# Chess Thinking Review
+# Boardtalk
 
 Chrome extension (Manifest V3). Records what you say out loud while playing on chess.com or lichess.org, then diagnoses your thinking after the game using the framework from Silman's *The Amateur's Mind*.
 
