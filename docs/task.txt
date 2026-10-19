@@ -1,0 +1,89 @@
+# MVP: Chess Thinking Review (Chrome extension, Manifest V3)
+
+## Goal
+Help chess players improve by recording what they say out loud while playing
+on chess.com or lichess, then diagnosing that thinking after the game using
+the framework from Silman's "The Amateur's Mind" (imbalances, no active plan,
+ignoring the opponent's threats, etc.). 
+
+## Hard constraint
+During a game the extension gives no analysis and no help of any kind: no
+engine, no evaluation, no hints, no feedback. It only records. All analysis
+happens after the game is finished.
+
+## Core functionality
+
+### 1. Record during the game (chess.com and lichess.org)
+- Content script adds a small "Record thinking" button, plus a hotkey
+  (Alt+Shift+R) to start/stop.
+- Audio: getUserMedia + MediaRecorder (audio/webm, opus), with a start
+  timestamp (epoch ms).
+- Board: a per-site adapter watches the page's move list (MutationObserver)
+  and logs each new move in SAN with the timestamp it appeared. Also record
+  the user's color (from board orientation).
+- Keep the site-specific DOM selectors isolated in one adapter per site,
+  since they change.
+- One recording = one game. The user stops recording after each game.
+- On stop, send audio + move log to the background worker, which stores it
+  (chrome.storage.local, unlimitedStorage) and opens the review page.
+- Feedback template is editable, the default is following Silman's framework.
+
+### 2. Review page (extension page, opens after recording stops)
+- Settings, saved locally: API key, LLM base URL and model name.
+- "Analyze" button runs the pipeline below, with a progress indicator.
+
+### 3. Transcribe
+- OpenAI Whisper API (whisper-1), response_format=verbose_json, to get
+  timestamped segments.
+- Drop segments with high no_speech_prob, since Whisper hallucinates text
+  on silence.
+
+### 4. Align speech to moves
+- Convert segment times to the same clock as the move log.
+- Assign each segment to the user's next move: everything said since the
+  user's previous move belongs to the following one.
+- Moves with no speech are marked "silent".
+
+### 5. Find key moments
+- Rebuild positions from the SAN move log with chess.js.
+- Stockfish WASM (stockfish.js 19, lite single-threaded build, bundled in
+  the extension, run in a Web Worker) evaluates every position at about
+  150 ms each.
+- Key moments = the user's top 3 moves by centipawn loss (minimum ~100 cp),
+  skipping positions that were already decided (beyond ~±700 cp).
+- Record the engine's best move for each key moment, converted to SAN.
+
+### 6. Diagnose
+- One LLM call, via LangChain so the model/provider is swappable
+  (OpenAI-compatible base URL + model name from settings).
+- Input per key moment: FEN before the move, the opponent's last move, the
+  move played, the engine's best move, eval before/after, and the user's
+  transcript (or "silent").
+- The LLM picks one label per moment: no structure (silent/mumbling),
+  grabbed material, no plan, ignored opponent's threat, imagined threat,
+  misjudged imbalance (minor pieces, pawn structure, files, weak squares,
+  space, development), or missed a candidate move.
+- It must quote the user's words as evidence, return strict JSON, and not
+  invent chess analysis beyond the engine's best move.
+- It also returns a 2-3 sentence summary of the player's main thinking
+  problems and one concrete habit to practice.
+
+### 7. Review output
+- Top: the summary and "silent on X of Y of your moves".
+- Then each key moment: move played, eval change, what the user said, the
+  label and diagnosis, and the engine's preferred move.
+- Render all LLM and transcript text as plain text (no innerHTML).
+
+## Technical notes
+- Bundle chess.js and Stockfish locally. Manifest V3 forbids remote code.
+- Extension page CSP needs 'wasm-unsafe-eval'.
+- host_permissions: the LLM and Whisper API hosts. No chess site APIs
+  are needed.
+- API keys are entered by the user and stored locally.
+- The mic permission prompt is per site (chess.com / lichess.org).
+- Standard chess only (no variants or Chess960) for the MVP.
+
+## Out of scope for MVP
+Live analysis or hints, puzzles, accounts or cloud sync, payments,
+multi-game dashboards or progress tracking, rating-specific coaching,
+other chess sites, other browsers.

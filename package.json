@@ -1,0 +1,7 @@
+{
+  "name": "chess-thinking-review",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension: record your thinking out loud during chess games, diagnose it after."
+}
