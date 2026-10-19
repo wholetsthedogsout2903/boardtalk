@@ -72,7 +72,7 @@ return { positions, illegalAtPly: null }
 | analyse | `position fen <fen>`, `go movetime <ms>` | `bestmove <uci> …` |
 | dispose | `quit`, then `worker.terminate()` | none |
 
-- The worker script is `public/stockfish/…js` (single-thread lite build) loaded with `new Worker(chrome.runtime.getURL(...))`. The `.wasm` sits beside it. The extension-page CSP needs `'wasm-unsafe-eval'`.
+- The worker script is `vendor/stockfish/stockfish-19-lite-single.js` (copied to `dist/stockfish/` by the build) loaded with `new Worker(chrome.runtime.getURL(...))`. The `.wasm` sits beside it. The extension-page CSP needs `'wasm-unsafe-eval'`.
 - While searching, the engine emits `info … score cp N` or `score mate N`. Keep the **last** such line before `bestmove`. A line without `multipv`, or with `multipv 1`, is the main line.
 - `bestmove (none)` means no legal move, so `bestUci = null`.
 - Calls are queued. A second `analyse` waits for the first. There is one search in flight at a time.

@@ -1,19 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Boardtalk: Chess Thinking Review",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Record your thinking out loud during chess games and diagnose it after.",
   "permissions": ["storage", "unlimitedStorage"],
   "host_permissions": ["https://api.openai.com/*"],
   "optional_host_permissions": ["https://*/*", "http://localhost/*"],
-  "background": {
-    "service_worker": "src/background/service-worker.ts",
-    "type": "module"
-  },
+  "action": { "default_title": "Boardtalk: open latest review" },
+  "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
       "matches": ["https://www.chess.com/*", "https://lichess.org/*"],
-      "js": ["src/content/main.ts"],
+      "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": false
     }

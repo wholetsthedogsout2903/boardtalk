@@ -1,18 +1,56 @@
 import type { SiteAdapter } from './adapters/SiteAdapter';
 
+export type SnapshotHandler = (sans: string[], observedAt: number) => void;
+
+const HEARTBEAT_MS = 500;
+
 /**
- * Waits for the move list root to exist, attaches one MutationObserver
- * (already batched per task), plus a heartbeat that re-attaches if the root is late
- * or replaced. Emits the full SAN list with an observedAt timestamp on every change.
+ * Observes the move list root (MutationObserver is already batched per task, so
+ * no debounce) and emits the full SAN list with a timestamp on every change.
+ * A heartbeat re-attaches if the root is mounted late or replaced.
  */
 export class MoveListWatcher {
+  private handler: SnapshotHandler | null = null;
+  private observer: MutationObserver | null = null;
+  private root: Element | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
+
   constructor(private readonly adapter: SiteAdapter) {}
 
-  start(_onSnapshot: (sans: string[]) => void): void {
-    throw new Error('Not implemented');
+  start(handler: SnapshotHandler): void {
+    this.stop();
+    this.handler = handler;
+    this.ensureAttached();
+    this.timer = setInterval(() => this.ensureAttached(), HEARTBEAT_MS);
   }
 
   stop(): void {
-    throw new Error('Not implemented');
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    this.observer?.disconnect();
+    this.observer = null;
+    this.root = null;
+    this.handler = null;
+  }
+
+  private ensureAttached(): void {
+    const root = this.adapter.moveListRoot();
+    if (root === this.root && root?.isConnected) return;
+    this.observer?.disconnect();
+    this.observer = null;
+    this.root = root;
+    if (!root) return;
+    this.observer = new MutationObserver(() => this.emit(Date.now()));
+    this.observer.observe(root, { childList: true, subtree: true, characterData: true });
+    this.emit(Date.now());
+  }
+
+  private emit(at: number): void {
+    if (!this.handler) return;
+    try {
+      this.handler(this.adapter.readMoves(), at);
+    } catch (err) {
+      console.warn('[Boardtalk] move snapshot failed', err);
+    }
   }
 }

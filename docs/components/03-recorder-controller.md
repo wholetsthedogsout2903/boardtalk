@@ -58,14 +58,16 @@ Order matters in the `starting` to `recording` step: `audio.start()` resolves **
 
 ### Button appearance
 
-| State | Label | Look |
-|---|---|---|
-| idle | "Record thinking" | neutral |
-| starting | "Waiting for mic…" | neutral, disabled |
-| recording | "● Recording  mm:ss" | red; a warning icon if the mic is lost |
-| saving | "Saving…" | disabled |
-| save_failed | "Retry save" | amber |
-| error | the message | red, 4 s |
+A single `<button>` in a Shadow DOM. Styling is the minimum needed to stay visible on a busy page: fixed position, system font, a border. State is carried by the label text, not by colour or icons.
+
+| State | Label |
+|---|---|
+| idle | "Record thinking" |
+| starting | "Waiting for mic…" (disabled) |
+| recording | "● Recording  mm:ss" (plus " (mic lost)" if the input device ended) |
+| saving | "Saving…" (disabled) |
+| save_failed | "Retry save" |
+| error | the message, for 4 s |
 
 The recording timer is the only thing shown in-game besides the button. No move or position information is shown, ever.
 

@@ -86,9 +86,9 @@ flowchart TB
 
 Every section uses the same headings: **Purpose**, **Contract** (TypeScript signatures), **Collaborators** (who calls it, what it calls), **Behaviour** (algorithm, states, diagrams), **Edge cases**, **Errors**, **Tests**.
 
-## Changes vs. the current skeleton
+## Changes vs. the original skeleton
 
-Working these details out changed some signatures and types. The stubs under `src/` have **not** been updated yet. Apply these before implementing:
+Working these details out changed some signatures and types. All of them are now implemented in `src/`:
 
 | # | Change | File(s) |
 |---|---|---|

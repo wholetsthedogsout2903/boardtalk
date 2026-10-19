@@ -1,19 +1,28 @@
 import type { MoveEvent } from '../shared/types';
 
 /**
- * Pure. begin() marks existing moves observedAt=null. onSnapshot() truncates to
- * the common prefix (takebacks), then appends new moves stamped with `now`.
+ * Pure. begin() marks existing moves observedAt=null. onSnapshot() ignores
+ * shorter snapshots (transient re-renders), truncates to the common prefix on
+ * divergence (takeback + replay), then appends new moves stamped with `at`.
  */
 export class MoveLogger {
-  begin(_initialSans: string[]): void {
-    throw new Error('Not implemented');
+  private list: MoveEvent[] = [];
+
+  begin(initialSans: string[]): void {
+    this.list = initialSans.map((san, i) => ({ ply: i + 1, san, observedAt: null }));
   }
 
-  onSnapshot(_sans: string[], _now: number): void {
-    throw new Error('Not implemented');
+  onSnapshot(sans: string[], at: number): void {
+    if (sans.length < this.list.length) return;
+    let k = 0;
+    while (k < this.list.length && this.list[k]!.san === sans[k]) k++;
+    if (k < this.list.length) this.list.length = k;
+    for (let i = k; i < sans.length; i++) {
+      this.list.push({ ply: i + 1, san: sans[i]!, observedAt: at });
+    }
   }
 
   moves(): MoveEvent[] {
-    throw new Error('Not implemented');
+    return this.list.map((m) => ({ ...m }));
   }
 }

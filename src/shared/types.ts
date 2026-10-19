@@ -2,22 +2,26 @@ export type Color = 'white' | 'black';
 export type SiteId = 'chesscom' | 'lichess';
 export type Stage = 'transcribe' | 'evaluate' | 'diagnose';
 
-export type Label =
-  | 'no_structure'
-  | 'grabbed_material'
-  | 'no_plan'
-  | 'ignored_threat'
-  | 'imagined_threat'
-  | 'misjudged_imbalance'
-  | 'missed_candidate';
+export const LABELS = [
+  'no_structure',
+  'grabbed_material',
+  'no_plan',
+  'ignored_threat',
+  'imagined_threat',
+  'misjudged_imbalance',
+  'missed_candidate',
+] as const;
+export type Label = (typeof LABELS)[number];
 
-export type Imbalance =
-  | 'minor_pieces'
-  | 'pawn_structure'
-  | 'files'
-  | 'weak_squares'
-  | 'space'
-  | 'development';
+export const IMBALANCES = [
+  'minor_pieces',
+  'pawn_structure',
+  'files',
+  'weak_squares',
+  'space',
+  'development',
+] as const;
+export type Imbalance = (typeof IMBALANCES)[number];
 
 /** observedAt is null for moves already on the board when recording started. */
 export interface MoveEvent {
@@ -41,7 +45,7 @@ export interface Position {
   terminal: 'mate' | 'draw' | null;
 }
 
-/** White's point of view. Mate scores are already clamped by score.ts. */
+/** White's point of view, clamped to +/-1000. */
 export interface PositionEval {
   ply: number;
   fen: string;
@@ -82,10 +86,11 @@ export interface Diagnosis {
   moments: MomentDiagnosis[];
   summary: string;
   habit: string;
+  warnings?: string[];
 }
 
 export interface AnalysisCache {
-  transcript?: TranscriptSegment[];
+  transcript?: TranscriptSegment[]; // raw Whisper segments, unfiltered
   evals?: PositionEval[];
   diagnosis?: Diagnosis;
 }
@@ -103,14 +108,17 @@ export interface Recording {
   createdAt: number;
 }
 
+export type RecordingMeta = Omit<Recording, 'analysis'>;
+
 export interface ReviewMoment extends KeyMoment, MomentDiagnosis {}
 
 export interface ReviewResult {
   userMoveCount: number;
   silentCount: number;
-  summary: string;
-  habit: string;
+  summary: string | null;
+  habit: string | null;
   moments: ReviewMoment[];
+  warnings: string[];
 }
 
 export interface Settings {

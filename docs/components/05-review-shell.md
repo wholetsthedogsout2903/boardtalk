@@ -4,6 +4,16 @@
 
 The extension page that opens after recording. It loads the recording, edits settings, runs the pipeline with a progress display, and renders the result. It contains no analysis logic. It translates between the user and `AnalysisPipeline`.
 
+## UI scope
+
+**No fancy UI.** The page is plain semantic HTML, with the final analysis as an ordinary HTML document.
+
+- No framework, no CSS framework, no icon set, no charts, no board rendering, no coloured chips.
+- Use native elements: `<h1>`-`<h3>`, `<p>`, `<dl>`, `<details>`, `<form>`, `<label>`, `<input>`, `<textarea>`, `<button>`.
+- Browser default styling. The only CSS allowed is a handful of rules in a `<style>` block in `review.html` for a readable line length (for example `body { max-width: 42rem; margin: 2rem auto; font-family: system-ui; }`). No separate stylesheet.
+- State is conveyed in words, not colour or icons.
+- `el()` still exists, because it is the `textContent`-only way to build elements without `innerHTML`.
+
 ## Contract
 
 ```ts
@@ -107,41 +117,50 @@ sequenceDiagram
 | Model name | text | non-empty |
 | Feedback template | textarea + "Reset to default" | none |
 
+The panel is a plain `<form>` of `<label>` and `<input>` pairs inside a `<details><summary>Settings</summary>` element.
+
 On **Save**: `SettingsRepository.save()` (which normalises), then `chrome.permissions.request({ origins: [origin + '/*'] })` for the base URL's origin, unless `api.openai.com` (static) or already granted. A denial shows an inline error: "Boardtalk can't reach <origin> without permission."
 
 Keys are validated **lazily by the stage that needs them**. The pipeline throws `AnalysisError('transcribe', 'config')` if the Whisper key is empty and no transcript is cached. This avoids duplicating "which fields does this run need" logic in the UI.
 
 ### `ProgressView`
 
-Three rows (Transcribe, Evaluate, Diagnose), each with a status icon: waiting, running (with `done/total` where known), done, cached, skipped, failed. It consumes `ProgressEvent` (see 10).
+One line of plain text, for example `Transcribe: done · Evaluate: 54/84 · Diagnose: waiting`. Each stage reads as one of waiting, running (with `done/total` where known), done, cached, skipped or failed. No bar and no icons. It consumes `ProgressEvent` (see 10).
 
-### `ReviewView` layout
+### `ReviewView` markup
 
+The result is a plain HTML document body. Rough shape (every text node is set with `textContent`):
+
+```html
+<h1>Boardtalk</h1>
+<p>chess.com · 19 Oct 2026 · 42 moves · 31:08</p>
+<details><summary>Settings</summary> <form>…</form> </details>
+<button>Analyze</button>
+<p>Transcribe: done · Evaluate: 54/84 · Diagnose: waiting</p>
+
+<h2>Summary</h2>
+<p>Silent on 11 of 21 of your moves.</p>
+<p>…2-3 sentences…</p>
+<h2>Habit to practise</h2>
+<p>…one habit…</p>
+
+<h2>Key moments</h2>
+<h3>Move 14… Nxe5?</h3>
+<dl>
+  <dt>Eval</dt>             <dd>+0.3 → −3.1 (−3.4)</dd>
+  <dt>Label</dt>            <dd>Ignored opponent's threat</dd>
+  <dt>You said</dt>         <dd>"I'll just take the pawn"</dd>
+  <dt>Diagnosis</dt>        <dd>…</dd>
+  <dt>Engine preferred</dt> <dd>Qd2</dd>
+</dl>
 ```
-┌ Boardtalk ───────────────────────────────────────┐
-│ chess.com · 19 Oct 2026 · 42 moves · 31:08        │
-│ [Settings ▸]                                       │
-│ [ Analyze ]                                        │
-│ ✓ Transcribe   ● Evaluate 54/84   ○ Diagnose       │
-├────────────────────────────────────────────────────┤
-│ Silent on 11 of 21 of your moves                   │
-│ Summary: …2-3 sentences…                           │
-│ Habit to practise: …one habit…                     │
-├────────────────────────────────────────────────────┤
-│ Move 14…  Nxe5?     +0.3 → −3.1  (−3.4)            │
-│ [Ignored opponent's threat]                        │
-│ You said: "I'll just take the pawn"                │
-│ Diagnosis: …                                       │
-│ Engine preferred: Qd2                              │
-└────────────────────────────────────────────────────┘
-```
 
-- Move label: `moveNumber = ceil(ply / 2)`. White shows `14.`, black shows `14…`.
+- Move heading: `moveNumber = ceil(ply / 2)`. White shows `14.`, black shows `14…`.
 - Eval: `cp / 100` to one decimal with a sign, in the **user's** point of view. The change is `after - before`.
-- Silent moment: "You said: (silent)".
-- Label chips use a display-name map (`review/labels.ts`): `no_structure` is "No structure", `ignored_threat` is "Ignored opponent's threat", `imagined_threat` is "Imagined threat", and so on. A `misjudged_imbalance` chip appends the imbalance, e.g. "Misjudged imbalance: weak squares".
-- If `warnings` is non-empty, a notice box sits above the summary.
-- If there are no key moments: "No move lost 1.0 or more in a position that was still undecided." plus the silence stats. There is no summary or habit in this case.
+- Silent moment: the "You said" value is "(silent)".
+- Label text comes from a display-name map (`review/labels.ts`): `no_structure` is "No structure", `ignored_threat` is "Ignored opponent's threat", `imagined_threat` is "Imagined threat", and so on. For `misjudged_imbalance` the text appends the imbalance, e.g. "Misjudged imbalance: weak squares".
+- If `warnings` is non-empty, render them as a `<ul>` under a "Notes" `<h2>` above the summary.
+- If there are no key moments: a single paragraph, "No move lost 1.0 or more in a position that was still undecided.", plus the silence line. There is no summary or habit.
 - **Every string comes from `el()` and `textContent`.** This includes the model's text and the user's transcript.
 
 ### Error messages (`ReviewView.showError`)

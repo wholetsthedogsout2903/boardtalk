@@ -1,14 +1,20 @@
 import type { Color } from '../shared/types';
+import { MATE_CLAMP_CP } from './config';
 import type { EngineScore } from './StockfishEngine';
 
-/** Mate scores become +/-1000 cp for loss maths. */
-export const MATE_CLAMP_CP = 1000;
-
-/** Engine score is side-to-move POV; result is white's POV. */
-export function toWhiteCp(_score: EngineScore, _sideToMove: Color): number {
-  throw new Error('Not implemented');
+/** Engine score is side-to-move POV; result is white's POV, clamped. */
+export function toWhiteCp(score: EngineScore, sideToMove: Color): number {
+  let raw: number;
+  if (score.mate !== undefined) {
+    raw = score.mate > 0 ? MATE_CLAMP_CP : -MATE_CLAMP_CP; // mate 0 = side to move is mated
+  } else if (score.cp !== undefined) {
+    raw = Math.max(-MATE_CLAMP_CP, Math.min(MATE_CLAMP_CP, score.cp));
+  } else {
+    throw new Error('Engine returned no score');
+  }
+  return sideToMove === 'white' ? raw : -raw;
 }
 
-export function toUserCp(_cpWhite: number, _userColor: Color): number {
-  throw new Error('Not implemented');
+export function toUserCp(cpWhite: number, userColor: Color): number {
+  return userColor === 'white' ? cpWhite : -cpWhite;
 }

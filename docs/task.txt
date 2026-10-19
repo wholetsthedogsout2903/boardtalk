@@ -74,6 +74,13 @@ happens after the game is finished.
   label and diagnosis, and the engine's preferred move.
 - Render all LLM and transcript text as plain text (no innerHTML).
 
+### 8. UI scope
+- No fancy UI. The review page, including settings, progress and the final
+  analysis, is plain semantic HTML: headings, paragraphs, lists, a form,
+  browser default styling. No CSS framework, icons, charts or board rendering.
+- The only styling is what the in-page "Record thinking" button needs to stay
+  visible on the chess site.
+
 ## Technical notes
 - Bundle chess.js and Stockfish locally. Manifest V3 forbids remote code.
 - Extension page CSP needs 'wasm-unsafe-eval'.
@@ -86,4 +93,5 @@ happens after the game is finished.
 ## Out of scope for MVP
 Live analysis or hints, puzzles, accounts or cloud sync, payments,
 multi-game dashboards or progress tracking, rating-specific coaching,
-other chess sites, other browsers.
+other chess sites, other browsers, styled or themed UI, charts, board
+rendering.

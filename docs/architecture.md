@@ -16,8 +16,9 @@ Design only. Per-component detail (contracts, algorithms, edge cases, interactio
 | 8 | **Key moments are picked by centipawn loss but displayed in game order.** | Reads as a narrative. |
 | 9 | **Transcribe and engine evaluation run in parallel.** | They're independent (network vs CPU), so this cuts wall time. |
 | 10 | **Each expensive stage is cached in the recording**: transcript, evals, diagnosis. | A bad LLM URL or a template edit shouldn't re-pay for Whisper or re-run Stockfish. |
+| 11 | **No fancy UI.** The review page (settings, progress, results) is plain semantic HTML with browser default styling. No CSS framework, icons, chips, charts or board. | Requested MVP scope. The only styling is what the in-page record button needs to stay visible. |
 
-Still open: #1 and #3.
+Still open: #1 and #3. #11 is settled.
 
 ## 1. Runtime boundaries
 
@@ -59,7 +60,7 @@ The hard constraint ("no help during a game") is enforced structurally:
 
 ```
 manifest.json
-public/stockfish/                   # stockfish.js lite single-thread .js + .wasm
+vendor/stockfish/                   # stockfish.js 19 lite single-thread .js + .wasm (vendored)
 src/
   shared/
     types.ts                        # domain types (§3)
@@ -410,7 +411,7 @@ classDiagram
 ```
 
 - `SettingsPanel` holds the keys, base URL, model and template textarea with "Reset to default". Save calls `chrome.permissions.request` for the base URL origin, then `SettingsRepository.save`.
-- `ReviewView` shows the summary and habit, "silent on X of Y of your moves", then each key moment. Each moment has the move played, the eval change, what the user said, the label with its diagnosis, and the engine's preferred move. All text goes through `el()` and `textContent`.
+- `ReviewView` is plain HTML: it shows the summary and habit, "silent on X of Y of your moves", then each key moment as a heading with a definition list (eval change, label, what the user said, diagnosis, engine's preferred move). All text goes through `el()` and `textContent`. See `components/05-review-shell.md` for the markup.
 - `AnalyzeController` loads `?id=`, falling back to `latestId()`. If a cached `diagnosis` exists, it renders immediately without spending API calls.
 
 ## 5. Flows
@@ -480,7 +481,7 @@ flowchart LR
 - `content_security_policy.extension_pages`: `script-src 'self' 'wasm-unsafe-eval'; object-src 'self'`.
 - No `tabs`, `activeTab` or `web_accessible_resources` are needed.
 
-The `manifest.json` in this repo points at `.ts` source paths. The bundler (not chosen yet) must rewrite them to built output.
+`manifest.json` references the built files (`content.js`, `background.js`). `build.mjs` (esbuild) produces them in `dist/`, which is what gets loaded as an unpacked extension. The service worker also registers a toolbar-button click that reopens the latest review.
 
 ## 7. Failure handling (MVP level)
 
