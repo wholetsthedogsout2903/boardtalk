@@ -1,6 +1,6 @@
 # Boardtalk: MVP architecture
 
-Design only. Diagrams are Mermaid (render natively on GitHub, GitLab, and in the VS Code / JetBrains Markdown previews). The source task is in [`task.txt`](task.txt).
+Design only. Per-component detail (contracts, algorithms, edge cases, interactions) is in [`components/`](components/README.md); where it differs from this overview, `components/` wins. Diagrams are Mermaid (render natively on GitHub, GitLab, and in the VS Code / JetBrains Markdown previews). The source task is in [`task.txt`](task.txt).
 
 ## 0. Decisions to confirm
 
@@ -248,7 +248,7 @@ classDiagram
 | Class | Responsibility and rules |
 |---|---|
 | `SiteAdapter` impls | **The only place with DOM selectors.** They return normalised SAN and handle chess.com's figurine notation. `userColor()` reads board orientation. |
-| `MoveListWatcher` | Waits for `moveListRoot()` to exist, because both sites mount it late. It attaches one `MutationObserver` and debounces with rAF. It emits the full SAN list on each change, and the diffing happens in `MoveLogger`. This is robust to sites re-rendering the list. |
+| `MoveListWatcher` | Waits for `moveListRoot()` to exist, because both sites mount it late. It attaches one `MutationObserver` (already batched per task, so no debounce) and a 500 ms heartbeat that re-attaches if the root is late or replaced. It emits the full SAN list plus an `observedAt` timestamp on each change, and the diffing happens in `MoveLogger`. This is robust to sites re-rendering the list. |
 | `MoveLogger` | Pure. On `begin`, the existing moves get `observedAt = null`. On a snapshot, it truncates to the common prefix (this handles takebacks), then appends new moves stamped with `now`. |
 | `AudioRecorder` | Calls `getUserMedia({audio:true})`, then `MediaRecorder` with `audio/webm;codecs=opus` and `audioBitsPerSecond: 24000`. `startedAt = Date.now()` is taken in the recorder's `start` event. `stop()` also stops the mic tracks. It throws a typed `MicDeniedError`. |
 | `RecorderController` | Holds the state machine below. On start it refuses if `userColor()` is null. On stop it builds a `RecordingPayload` (audio base64-encoded, `moves` from the logger) and sends `SaveRecording`. If saving fails, the payload stays in `pending` and the button offers "Retry save", so a game isn't lost to a transient error. |

@@ -2,7 +2,8 @@ import type { SiteAdapter } from './adapters/SiteAdapter';
 
 /**
  * Waits for the move list root to exist, attaches one MutationObserver
- * (rAF-debounced), and emits the full SAN list on every change.
+ * (already batched per task), plus a heartbeat that re-attaches if the root is late
+ * or replaced. Emits the full SAN list with an observedAt timestamp on every change.
  */
 export class MoveListWatcher {
   constructor(private readonly adapter: SiteAdapter) {}

@@ -12,6 +12,7 @@ Design and skeleton only. The files under `src/` are stubs (types, interfaces, a
 
 - [`docs/task.txt`](docs/task.txt) - the MVP task as originally written
 - [`docs/architecture.md`](docs/architecture.md) - architecture, class design, diagrams, open decisions, first spikes
+- [`docs/components/`](docs/components/README.md) - per-component design: contracts, algorithms, edge cases, interactions
 
 ## Layout
 
