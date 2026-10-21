@@ -8,21 +8,69 @@ Chrome extension (Manifest V3). Records what you say out loud while playing on c
 
 Working MVP, tested but not yet run against the live sites. See "Known gaps" below.
 
-## Build and load
+## Run it on another machine
+
+Needs Chrome (or any Chromium browser), Node 22 or newer, and network access for `npm install`. Node 25 is what it was built and tested on.
+
+**Zipping.** Leave out `node_modules/`, `dist/` and `.git/`. `esbuild` ships a platform-specific binary, so a `node_modules/` from this machine won't work on another OS or CPU. `vendor/stockfish/` must stay in the zip, because the build copies the engine from there. Both commands run from the folder that contains `boardtalk/`.
 
 ```bash
-npm install
-npm run build        # bundles into dist/
-npm run typecheck
-npm test
+zip -r boardtalk.zip boardtalk -x 'boardtalk/node_modules/*' 'boardtalk/dist/*' 'boardtalk/.git/*'
 ```
 
-Then open `chrome://extensions`, enable Developer mode, click "Load unpacked" and choose `dist/`.
+**On the other machine:**
 
-1. Open a game on chess.com or lichess.org and click "Record thinking" (or press Alt+Shift+R). Allow the microphone for the site.
-2. Think out loud while you play. Stop the recording after the game (same button or hotkey).
-3. The review page opens. Under Settings, enter your OpenAI key (Whisper), an LLM key, base URL and model, click Save, then Analyze.
-4. The toolbar button reopens the latest review.
+```bash
+unzip boardtalk.zip && cd boardtalk
+npm install
+npm run build        # bundles into dist/
+```
+
+Then open `chrome://extensions`, enable Developer mode, click "Load unpacked" and choose the `dist/` folder. Rebuild and click the reload icon on the extension card after any code change. Reload open chess tabs too, because already-open tabs keep the old content script.
+
+## Test it
+
+### 1. Automated checks (no browser, no API keys)
+
+```bash
+npm run typecheck    # expect no output
+npm test             # expect: 20 test files, 139 tests, all passing
+```
+
+These cover the logic with stubs: alignment, key-moment selection, prompt and parser, storage, the pipeline, the content-script controller. They do not touch chess.com, lichess, a microphone, Whisper or a real LLM, so they can't tell you the extension works end to end. Step 2 does.
+
+### 2. Manual end-to-end test
+
+You need an OpenAI API key (Whisper) and a key for the LLM. The defaults use OpenAI for both, so one key works for both fields.
+
+1. **Open a game.** The quickest is a lichess game against the computer at `https://lichess.org/setup/ai` (no account needed). chess.com works too. Don't open the Boardtalk review page yet.
+2. **Start recording.** Click the "Record thinking" button the extension adds to the page, or press Alt+Shift+R (Option+Shift+R on a Mac). Allow the microphone for the site when asked. The button should show that it's recording and an elapsed time.
+3. **Play about 8 moves and talk through each one before you move.** Include one real blunder (hang a piece or a pawn) and say something about it, such as "I'll just take the pawn". Stay silent on one or two moves too. Only moves where you lose about a pawn or more can become key moments (see `src/analysis/config.ts`).
+4. **Stop recording** with the same button or hotkey. A review tab opens at `review.html?id=...`.
+5. **Settings.** Expand "Settings", enter the Whisper key, the LLM key, and leave the base URL and model at their defaults (`https://api.openai.com/v1`, `gpt-4o-mini`) or change them. Click "Save settings". If a permission prompt appears for the LLM host, allow it, then click Save again.
+6. **Click "Analyze".** One progress line shows transcribe and evaluate running (evaluate counts positions, about 150 ms each), then the diagnosis.
+
+What a pass looks like:
+
+| Check | Expected |
+|---|---|
+| Review opens by itself after stopping | A tab with `review.html?id=` |
+| Moves captured | The stats line counts your moves, and "Silent on N of M of your moves" matches what you did |
+| Key moments | Your blunder appears as a moment with the position's engine move and evaluation |
+| Speech attached to the right move | The words you said before the blunder are quoted under that move, not the next one |
+| Diagnosis | A label, a one-line explanation, and a summary and habit |
+| Reload the review tab | It renders instantly from cache, with no new API calls |
+| Toolbar button | Reopens the latest review |
+
+If you didn't lose a pawn anywhere, the Key moments section reads "No move lost 1.0 or more in a position that was still undecided." and the LLM call is skipped. That's correct behaviour, not a failure.
+
+### Troubleshooting
+
+- **"Saved, but no moves were detected"**: the DOM selectors for that site don't match the live page. See Known gaps; the fix goes in one adapter file.
+- **Button doesn't appear**: the page was open before the extension was loaded, or the URL isn't on `chess.com` or `lichess.org`. Reload the tab.
+- **Recording errors**: open DevTools on the game tab. Boardtalk logs with the prefix `[Boardtalk]`.
+- **Analysis errors**: the review page shows which stage failed. A 401 means a wrong key. Service worker logs are under "Inspect views: service worker" on the extension card.
+- **Using Vertex AI / another provider**: any OpenAI-compatible endpoint works. Set the base URL, model and token in Settings. Vertex tokens from `gcloud auth print-access-token` last about an hour.
 
 ## Known gaps
 
